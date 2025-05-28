@@ -1,5 +1,6 @@
 const users = require("../model/userModel");
 const jwt = require('jsonwebtoken')
+const Submission = require('../model/codeSubmissionModel');
 
 //register
 exports.registerController = async (req, res) => {
@@ -84,3 +85,68 @@ exports.googleLoginController = async (req, res) => {
     }
 
 }
+
+// getallusers
+
+exports.getAllUsersWithStats = async (req, res) => {
+  try {
+    const user = await users.find();
+
+    const usersWithStats = await Promise.all(
+      user.map(async (user) => {
+        const submissions = await Submission.find({ userId: user._id });
+
+        const submissionsCount = submissions.length;
+        const totalPassed = submissions.reduce((acc, s) => acc + (s.passedTestCases || 0), 0);
+        const totalTestCases = submissions.reduce((acc, s) => acc + (s.totalTestCases || 0), 0);
+
+        // Calculate score based on % passed
+        const score = totalTestCases ? Math.round((totalPassed / totalTestCases) * 100) : 0;
+
+        // Calculate streak
+        const dates = new Set(
+          submissions.map(sub => new Date(sub.submittedAt).toISOString().split('T')[0])
+        );
+        let streak = 0;
+        const today = new Date();
+        for (let i = 0; i < 365; i++) {
+          const date = new Date(today);
+          date.setDate(date.getDate() - i);
+          const formatted = date.toISOString().split("T")[0];
+          if (dates.has(formatted)) streak++;
+          else break;
+        }
+
+        return {
+          id: user._id,
+          name: user.username,
+          email: user.email,
+          password: user.password,
+          submissions: submissionsCount,
+          streak,
+          score,
+        };
+      })
+    );
+
+    res.json({ success: true, user: usersWithStats });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// delete a user
+exports.deleteUserController = async (req, res) => {
+    const { id } = req.params;
+    try {
+      const user = await users.findByIdAndDelete(id);
+      if (!user) {
+        return res.status(404).json({ success: false, message: "User not found" });
+      }
+      res.status(200).json({ success: true, message: "User deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Server error", error });
+    }
+  };
+  
