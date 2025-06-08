@@ -4,6 +4,7 @@ const express = require('express')
 const userController = require('./controllers/userController')
 const questionController = require('./controllers/questionController')
 const codeSubmissionController = require('./controllers/codeSubmissionController');
+const jwtMiddleware = require('./middleware/jwtMiddleware');
 
 //instance
 const route = new express.Router()
@@ -20,7 +21,7 @@ route.delete('/users/delete/:id', userController.deleteUserController);
 // Question routes
 route.post('/questions/add', questionController.addQuestion);
 route.get('/questions/all', questionController.getAllQuestions);
-route.get('/questions/category/:category', questionController.getByCategory);
+route.get('/questions/category/:category',jwtMiddleware ,questionController.getByCategory);
 route.get('/get-question/:id', questionController.getQuestionById);
 route.put('/questions/update/:id', questionController.updateQuestion);
 route.delete('/questions/delete/:id', questionController.deleteQuestion);
